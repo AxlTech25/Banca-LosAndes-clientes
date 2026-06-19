@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../widgets/banco_los_andes_logo.dart';
 import '../../viewmodels/dashboard_view_model.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -12,10 +13,13 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  static const _logoUrl =
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAs4iXmx_MXN7tswwjPTAGLHZ1bgb1HltEm63mGF_fkmS_QNfc37w1HWDkCPzUet7nG-L4o_AQCnorUmbI4YKGoMlgoYQWXALU8ON18KJz8F6g_2YP6oekD_FzyeS2QrLlUP9B5BYdXD--EUrcxHdlP7ge2omTLqqP6eBlwkeWrvLPxWS0nh7Dz83S-WpGdJz5N69AtqHGox5VLHbUJpBedU_YVTcbu6YXl74tZXYNHzWDRc1kmrtM7RULv-_42MJ9XPrL6oK72aQ';
-
   final _viewModel = DashboardViewModel();
+
+  @override
+  void initState() {
+    super.initState();
+    _viewModel.loadDashboard();
+  }
 
   @override
   void dispose() {
@@ -23,7 +27,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  void _logout() {
+  Future<void> _logout() async {
+    await _viewModel.signOut();
+    if (!mounted) return;
     Navigator.of(
       context,
     ).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
@@ -38,30 +44,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
           appBar: _DashboardAppBar(onLogout: _logout),
           body: SafeArea(
             top: false,
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 448),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _GreetingSection(
-                        logoUrl: _logoUrl,
-                        greeting: _viewModel.greeting,
-                        customerName: _viewModel.customerName,
+            child: _viewModel.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 448),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _GreetingSection(
+                              greeting: _viewModel.greeting,
+                              customerName: _viewModel.customerName,
+                            ),
+                            const SizedBox(height: 24),
+                            _BalanceCard(viewModel: _viewModel),
+                            const SizedBox(height: 24),
+                            _CommitmentsSection(viewModel: _viewModel),
+                            const SizedBox(height: 24),
+                            const _QuickActionsSection(),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 24),
-                      _BalanceCard(viewModel: _viewModel),
-                      const SizedBox(height: 24),
-                      _CommitmentsSection(viewModel: _viewModel),
-                      const SizedBox(height: 24),
-                      const _QuickActionsSection(),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ),
           ),
           bottomNavigationBar: const _DashboardBottomNav(),
         );
@@ -93,16 +100,11 @@ class _DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
         onPressed: () {},
         icon: const Icon(Icons.account_balance, color: AppColors.primary),
       ),
-      title: Text(
-        'Banco Los Andes',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-          color: AppColors.primary,
-          fontWeight: FontWeight.w700,
-        ),
+      title: const BancoLosAndesLogo(
+        height: 40,
+        borderRadius: BorderRadius.all(Radius.circular(8)),
       ),
+      centerTitle: true,
       actions: [
         SizedBox(
           width: 56,
@@ -119,12 +121,10 @@ class _DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
 
 class _GreetingSection extends StatelessWidget {
   const _GreetingSection({
-    required this.logoUrl,
     required this.greeting,
     required this.customerName,
   });
 
-  final String logoUrl;
   final String greeting;
   final String customerName;
 
@@ -156,29 +156,10 @@ class _GreetingSection extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
-        Container(
+        const BancoLosAndesLogo(
           width: 64,
           height: 64,
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.primaryContainer, width: 2),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: Image.network(
-              logoUrl,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.account_balance,
-                  color: AppColors.onPrimary,
-                  size: 36,
-                );
-              },
-            ),
-          ),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
       ],
     );

@@ -1,6 +1,13 @@
 import 'package:flutter/foundation.dart';
 
+import '../../data/auth/auth_repository.dart';
+
 class RegisterViewModel extends ChangeNotifier {
+  RegisterViewModel({AuthRepository? authRepository})
+    : _authRepository = authRepository ?? AuthRepository();
+
+  final AuthRepository _authRepository;
+
   bool _passwordVisible = false;
   bool _isSubmitting = false;
 
@@ -15,15 +22,20 @@ class RegisterViewModel extends ChangeNotifier {
   Future<void> createAccount({
     required String fullName,
     required String dni,
-    required String email,
     required String password,
   }) async {
     _isSubmitting = true;
     notifyListeners();
 
-    await Future<void>.delayed(const Duration(milliseconds: 550));
-
-    _isSubmitting = false;
-    notifyListeners();
+    try {
+      await _authRepository.signUpClient(
+        fullName: fullName,
+        dni: dni,
+        password: password,
+      );
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
   }
 }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/auth/auth_repository.dart';
 import '../../viewmodels/register_view_model.dart';
+import '../../widgets/banco_los_andes_logo.dart';
 import '../../widgets/primary_action_button.dart';
 import '../../widgets/underlined_los_andes_text_field.dart';
 
@@ -13,13 +16,9 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  static const _logoUrl =
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAs4iXmx_MXN7tswwjPTAGLHZ1bgb1HltEm63mGF_fkmS_QNfc37w1HWDkCPzUet7nG-L4o_AQCnorUmbI4YKGoMlgoYQWXALU8ON18KJz8F6g_2YP6oekD_FzyeS2QrLlUP9B5BYdXD--EUrcxHdlP7ge2omTLqqP6eBlwkeWrvLPxWS0nh7Dz83S-WpGdJz5N69AtqHGox5VLHbUJpBedU_YVTcbu6YXl74tZXYNHzWDRc1kmrtM7RULv-_42MJ9XPrL6oK72aQ';
-
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _dniController = TextEditingController();
-  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _viewModel = RegisterViewModel();
 
@@ -27,7 +26,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _nameController.dispose();
     _dniController.dispose();
-    _emailController.dispose();
     _passwordController.dispose();
     _viewModel.dispose();
     super.dispose();
@@ -36,18 +34,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    await _viewModel.createAccount(
-      fullName: _nameController.text.trim(),
-      dni: _dniController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
+    try {
+      await _viewModel.createAccount(
+        fullName: _nameController.text.trim(),
+        dni: _dniController.text.trim(),
+        password: _passwordController.text,
+      );
+    } on AuthFailure catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+      return;
+    }
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Registro listo para conectar con Supabase.'),
-      ),
+      const SnackBar(content: Text('Cuenta creada correctamente.')),
+    );
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      AppRoutes.dashboard,
+      (route) => false,
     );
   }
 
@@ -57,7 +64,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       animation: _viewModel,
       builder: (context, _) {
         return Scaffold(
-          appBar: const _RegisterAppBar(logoUrl: _logoUrl),
+          appBar: const _RegisterAppBar(),
           body: SafeArea(
             top: false,
             child: Center(
@@ -72,7 +79,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     formKey: _formKey,
                     nameController: _nameController,
                     dniController: _dniController,
-                    emailController: _emailController,
                     passwordController: _passwordController,
                     viewModel: _viewModel,
                     onSubmit: _submit,
@@ -88,9 +94,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 }
 
 class _RegisterAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _RegisterAppBar({required this.logoUrl});
-
-  final String logoUrl;
+  const _RegisterAppBar();
 
   @override
   Size get preferredSize => const Size.fromHeight(48);
@@ -132,26 +136,9 @@ class _RegisterAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
             Expanded(
               child: Center(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Image.network(
-                      logoUrl,
-                      height: 24,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.account_balance,
-                          color: AppColors.onPrimary,
-                          size: 24,
-                        );
-                      },
-                    ),
-                  ),
+                child: BancoLosAndesLogo(
+                  height: 36,
+                  borderRadius: BorderRadius.circular(6),
                 ),
               ),
             ),
@@ -168,7 +155,6 @@ class _RegisterCard extends StatelessWidget {
     required this.formKey,
     required this.nameController,
     required this.dniController,
-    required this.emailController,
     required this.passwordController,
     required this.viewModel,
     required this.onSubmit,
@@ -177,7 +163,6 @@ class _RegisterCard extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController nameController;
   final TextEditingController dniController;
-  final TextEditingController emailController;
   final TextEditingController passwordController;
   final RegisterViewModel viewModel;
   final VoidCallback onSubmit;
@@ -231,22 +216,6 @@ class _RegisterCard extends StatelessWidget {
                   }
                   if (dni.length < 8) {
                     return 'El DNI debe tener al menos 8 digitos';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 18),
-              UnderlinedLosAndesTextField(
-                controller: emailController,
-                label: 'Correo electr\u00f3nico',
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  final email = value?.trim() ?? '';
-                  if (email.isEmpty) {
-                    return 'Ingresa tu correo electr\u00f3nico';
-                  }
-                  if (!email.contains('@') || !email.contains('.')) {
-                    return 'Ingresa un correo v\u00e1lido';
                   }
                   return null;
                 },

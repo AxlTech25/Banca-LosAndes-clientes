@@ -1,11 +1,11 @@
 {
-    "name": "appbanco_losandes_clientes",
-    "short_name": "appbanco_losandes_clientes",
+    "name": "Banco Los Andes",
+    "short_name": "Los Andes",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#59C8F2",
+    "theme_color": "#59C8F2",
+    "description": "App movil de Banco Los Andes para clientes.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

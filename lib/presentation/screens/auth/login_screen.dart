@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/auth/auth_repository.dart';
 import '../../viewmodels/login_view_model.dart';
+import '../../widgets/banco_los_andes_logo.dart';
 import '../../widgets/los_andes_text_field.dart';
 import '../../widgets/primary_action_button.dart';
 
@@ -14,9 +16,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  static const _logoUrl =
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAs4iXmx_MXN7tswwjPTAGLHZ1bgb1HltEm63mGF_fkmS_QNfc37w1HWDkCPzUet7nG-L4o_AQCnorUmbI4YKGoMlgoYQWXALU8ON18KJz8F6g_2YP6oekD_FzyeS2QrLlUP9B5BYdXD--EUrcxHdlP7ge2omTLqqP6eBlwkeWrvLPxWS0nh7Dz83S-WpGdJz5N69AtqHGox5VLHbUJpBedU_YVTcbu6YXl74tZXYNHzWDRc1kmrtM7RULv-_42MJ9XPrL6oK72aQ';
-
   final _formKey = GlobalKey<FormState>();
   final _userController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -33,10 +32,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    await _viewModel.signIn(
-      user: _userController.text.trim(),
-      password: _passwordController.text,
-    );
+    try {
+      await _viewModel.signIn(
+        dni: _userController.text.trim(),
+        password: _passwordController.text,
+      );
+    } on AuthFailure catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+      return;
+    }
 
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
@@ -57,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const _LoginHeader(logoUrl: _logoUrl),
+                      const _LoginHeader(),
                       const SizedBox(height: 32),
                       _LoginCard(
                         formKey: _formKey,
@@ -81,41 +88,14 @@ class _LoginScreenState extends State<LoginScreen> {
 }
 
 class _LoginHeader extends StatelessWidget {
-  const _LoginHeader({required this.logoUrl});
-
-  final String logoUrl;
+  const _LoginHeader();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Image.network(
-          logoUrl,
-          width: 158,
-          height: 68,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return const SizedBox(
-              width: 158,
-              height: 68,
-              child: Icon(
-                Icons.account_balance,
-                color: AppColors.primary,
-                size: 48,
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Banco Los Andes',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: AppColors.primary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
+    return const BancoLosAndesLogo(
+      width: 176,
+      height: 176,
+      borderRadius: BorderRadius.all(Radius.circular(16)),
     );
   }
 }
@@ -158,11 +138,15 @@ class _LoginCard extends StatelessWidget {
             children: [
               LosAndesTextField(
                 controller: userController,
-                label: 'Usuario / DNI',
-                keyboardType: TextInputType.text,
+                label: 'DNI',
+                keyboardType: TextInputType.number,
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Ingresa tu usuario o DNI';
+                  final dni = value?.trim() ?? '';
+                  if (dni.isEmpty) {
+                    return 'Ingresa tu DNI';
+                  }
+                  if (dni.length < 8) {
+                    return 'El DNI debe tener al menos 8 digitos';
                   }
                   return null;
                 },
@@ -241,7 +225,9 @@ class _LoginOptions extends StatelessWidget {
           child: Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.of(context).pushNamed(AppRoutes.forgotPassword);
+              },
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 padding: EdgeInsets.zero,
