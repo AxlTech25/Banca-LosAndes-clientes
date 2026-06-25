@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/clientes/cliente_repository.dart';
 import '../../../data/solicitudes/solicitud_repository.dart';
 import '../../../domain/models/solicitud_model.dart';
+import '../credits/credito_cronograma_screen.dart';
 import 'chat_solicitud_screen.dart';
 import 'firma_solicitud_sheet.dart';
 import 'solicitud_documentos_screen.dart';
@@ -117,6 +118,30 @@ class _SolicitudDetailScreenState extends State<SolicitudDetailScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   _InfoCard(solicitud: _solicitud!),
+                  if (_solicitud!.muestraCronograma) ...[
+                    const SizedBox(height: 12),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        Icons.calendar_month_outlined,
+                        color: AppColors.primary,
+                      ),
+                      title: const Text('Cronograma de pagos'),
+                      subtitle: const Text(
+                        'Tambien disponible en la pestaña Creditos.',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => CreditoCronogramaScreen(
+                              solicitudId: _solicitud!.id,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -247,6 +272,7 @@ class _InfoCard extends StatelessWidget {
           children: [
             _Row('Expediente', solicitud.numeroExpediente ?? '-'),
             _Row('Estado', solicitud.estadoLabel),
+            _Row('Producto', solicitud.productoLabel),
             _Row(
               'Monto solicitado',
               ClienteRepository.formatBalance(solicitud.montoSolicitado),
@@ -257,7 +283,24 @@ class _InfoCard extends StatelessWidget {
                 ClienteRepository.formatBalance(solicitud.montoAprobado),
               ),
             _Row('Plazo', '${solicitud.plazoMeses ?? '-'} meses'),
+            if (solicitud.teaReferencial != null)
+              _Row('TEA referencial', '${solicitud.teaReferencial}%'),
+            if (solicitud.cuotaMensualMostrada != null)
+              _Row(
+                solicitud.muestraCronograma ? 'Cuota mensual' : 'Cuota referencia',
+                ClienteRepository.formatBalance(solicitud.cuotaMensualMostrada),
+              ),
+            if (solicitud.garantia != null)
+              _Row('Garantia', solicitud.garantiaLabel),
             _Row('Negocio', solicitud.nombreNegocio ?? '-'),
+            if (solicitud.ubicacionNegocio != null &&
+                solicitud.ubicacionNegocio!.isNotEmpty)
+              _Row('Ubicacion', solicitud.ubicacionNegocio!),
+            if (solicitud.gastosMensuales != null)
+              _Row(
+                'Gastos mensuales',
+                ClienteRepository.formatBalance(solicitud.gastosMensuales),
+              ),
             _Row('Destino', solicitud.destinoCredito ?? '-'),
           ],
         ),

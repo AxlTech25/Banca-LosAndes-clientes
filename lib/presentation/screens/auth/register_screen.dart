@@ -19,14 +19,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _dniController = TextEditingController();
+  final _telefonoController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _tipoNegocioController = TextEditingController();
+  final _nombreNegocioController = TextEditingController();
+  final _ubicacionController = TextEditingController();
+  final _antiguedadController = TextEditingController();
+  final _ingresosController = TextEditingController();
+  final _gastosController = TextEditingController();
   final _viewModel = RegisterViewModel();
 
   @override
   void dispose() {
     _nameController.dispose();
     _dniController.dispose();
+    _telefonoController.dispose();
     _passwordController.dispose();
+    _tipoNegocioController.dispose();
+    _nombreNegocioController.dispose();
+    _ubicacionController.dispose();
+    _antiguedadController.dispose();
+    _ingresosController.dispose();
+    _gastosController.dispose();
     _viewModel.dispose();
     super.dispose();
   }
@@ -39,6 +53,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         fullName: _nameController.text.trim(),
         dni: _dniController.text.trim(),
         password: _passwordController.text,
+        telefono: _telefonoController.text.trim(),
+        tipoNegocio: _tipoNegocioController.text.trim(),
+        nombreNegocio: _nombreNegocioController.text.trim(),
+        ubicacionNegocio: _ubicacionController.text.trim(),
+        antiguedadMeses: int.parse(_antiguedadController.text.trim()),
+        ingresosEstimados: double.parse(_ingresosController.text.trim()),
+        gastosMensuales: double.parse(_gastosController.text.trim()),
       );
     } on AuthFailure catch (error) {
       if (!mounted) return;
@@ -79,7 +100,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     formKey: _formKey,
                     nameController: _nameController,
                     dniController: _dniController,
+                    telefonoController: _telefonoController,
                     passwordController: _passwordController,
+                    tipoNegocioController: _tipoNegocioController,
+                    nombreNegocioController: _nombreNegocioController,
+                    ubicacionController: _ubicacionController,
+                    antiguedadController: _antiguedadController,
+                    ingresosController: _ingresosController,
+                    gastosController: _gastosController,
                     viewModel: _viewModel,
                     onSubmit: _submit,
                   ),
@@ -155,7 +183,14 @@ class _RegisterCard extends StatelessWidget {
     required this.formKey,
     required this.nameController,
     required this.dniController,
+    required this.telefonoController,
     required this.passwordController,
+    required this.tipoNegocioController,
+    required this.nombreNegocioController,
+    required this.ubicacionController,
+    required this.antiguedadController,
+    required this.ingresosController,
+    required this.gastosController,
     required this.viewModel,
     required this.onSubmit,
   });
@@ -163,7 +198,14 @@ class _RegisterCard extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController nameController;
   final TextEditingController dniController;
+  final TextEditingController telefonoController;
   final TextEditingController passwordController;
+  final TextEditingController tipoNegocioController;
+  final TextEditingController nombreNegocioController;
+  final TextEditingController ubicacionController;
+  final TextEditingController antiguedadController;
+  final TextEditingController ingresosController;
+  final TextEditingController gastosController;
   final RegisterViewModel viewModel;
   final VoidCallback onSubmit;
 
@@ -222,6 +264,22 @@ class _RegisterCard extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               UnderlinedLosAndesTextField(
+                controller: telefonoController,
+                label: 'Telefono',
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  final telefono = value?.trim() ?? '';
+                  if (telefono.isEmpty) {
+                    return 'Ingresa tu telefono';
+                  }
+                  if (telefono.length < 9) {
+                    return 'El telefono debe tener al menos 9 digitos';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+              UnderlinedLosAndesTextField(
                 controller: passwordController,
                 label: 'Contrase\u00f1a',
                 obscureText: !viewModel.passwordVisible,
@@ -247,6 +305,56 @@ class _RegisterCard extends StatelessWidget {
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: 28),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Datos de tu negocio',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              UnderlinedLosAndesTextField(
+                controller: tipoNegocioController,
+                label: 'Tipo de negocio',
+                validator: _required,
+              ),
+              const SizedBox(height: 18),
+              UnderlinedLosAndesTextField(
+                controller: nombreNegocioController,
+                label: 'Nombre del negocio',
+                validator: _required,
+              ),
+              const SizedBox(height: 18),
+              UnderlinedLosAndesTextField(
+                controller: ubicacionController,
+                label: 'Ubicacion (distrito)',
+                validator: _required,
+              ),
+              const SizedBox(height: 18),
+              UnderlinedLosAndesTextField(
+                controller: antiguedadController,
+                label: 'Antiguedad del negocio (meses)',
+                keyboardType: TextInputType.number,
+                validator: _positiveInt,
+              ),
+              const SizedBox(height: 18),
+              UnderlinedLosAndesTextField(
+                controller: ingresosController,
+                label: 'Ingresos mensuales estimados (S/)',
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: _positiveNumber,
+              ),
+              const SizedBox(height: 18),
+              UnderlinedLosAndesTextField(
+                controller: gastosController,
+                label: 'Gastos mensuales (S/)',
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: _positiveNumber,
               ),
               const SizedBox(height: 34),
               PrimaryActionButton(
@@ -281,7 +389,7 @@ class _RegisterHeader extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Complete sus datos para registrarse',
+          'Complete sus datos personales y de su negocio',
           textAlign: TextAlign.center,
           style: Theme.of(
             context,
@@ -290,6 +398,23 @@ class _RegisterHeader extends StatelessWidget {
       ],
     );
   }
+}
+
+String? _required(String? value) {
+  if (value == null || value.trim().isEmpty) return 'Campo requerido';
+  return null;
+}
+
+String? _positiveInt(String? value) {
+  final parsed = int.tryParse(value?.trim() ?? '');
+  if (parsed == null || parsed <= 0) return 'Ingresa un numero valido';
+  return null;
+}
+
+String? _positiveNumber(String? value) {
+  final parsed = double.tryParse(value?.trim() ?? '');
+  if (parsed == null || parsed <= 0) return 'Ingresa un monto valido';
+  return null;
 }
 
 class _LoginPrompt extends StatelessWidget {

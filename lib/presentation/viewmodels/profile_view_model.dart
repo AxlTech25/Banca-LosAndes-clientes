@@ -16,13 +16,11 @@ class ProfileViewModel extends ChangeNotifier {
   Map<String, dynamic>? _cliente;
   Map<String, dynamic>? _cuenta;
   bool _isLoading = true;
-  bool _isSaving = false;
   String? _error;
 
   Map<String, dynamic>? get cliente => _cliente;
   Map<String, dynamic>? get cuenta => _cuenta;
   bool get isLoading => _isLoading;
-  bool get isSaving => _isSaving;
   String? get error => _error;
 
   String get fullName {
@@ -39,6 +37,30 @@ class ProfileViewModel extends ChangeNotifier {
   String get saldoCuenta => ClienteRepository.formatBalance(
     _parseNum(_cuenta?['saldo_disponible']),
   );
+  String? get tipoNegocio => _cliente?['tipo_negocio']?.toString();
+  String? get nombreNegocio => _cliente?['nombre_negocio']?.toString();
+  String? get ubicacionNegocio => _cliente?['direccion']?.toString();
+  int? get antiguedadNegocioMeses => _parseInt(_cliente?['antiguedad_negocio_meses']);
+  String get ingresosEstimados => ClienteRepository.formatBalance(
+    _parseNum(_cliente?['ingresos_estimados']),
+  );
+  String get gastosMensuales => ClienteRepository.formatBalance(
+    _parseNum(_cliente?['gastos_mensuales']),
+  );
+  double? get ingresosEstimadosValor =>
+      _parseNum(_cliente?['ingresos_estimados'])?.toDouble();
+  double? get gastosMensualesValor =>
+      _parseNum(_cliente?['gastos_mensuales'])?.toDouble();
+  bool get tienePerfilNegocio {
+    final tipo = tipoNegocio?.trim() ?? '';
+    final nombre = nombreNegocio?.trim() ?? '';
+    final ubicacion = ubicacionNegocio?.trim() ?? '';
+    return tipo.isNotEmpty &&
+        nombre.isNotEmpty &&
+        ubicacion.isNotEmpty &&
+        antiguedadNegocioMeses != null &&
+        antiguedadNegocioMeses! > 0;
+  }
 
   Future<void> loadProfile() async {
     _isLoading = true;
@@ -46,35 +68,66 @@ class ProfileViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _cliente = await _authRepository.fetchCurrentCliente();
-      _cuenta = await _clienteRepository.fetchCuentaAhorros();
+      await _reloadClienteData();
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  Future<void> _reloadClienteData() async {
+    _cliente = await _authRepository.fetchCurrentCliente();
+    _cuenta = await _clienteRepository.fetchCuentaAhorros();
+  }
+
+  Future<void> _refreshAfterSave() async {
+    await _reloadClienteData();
+    notifyListeners();
+  }
+
+  Future<void> refreshProfile() => _refreshAfterSave();
+
   Future<bool> updateContacto({
     required String email,
     required String telefono,
   }) async {
-    _isSaving = true;
     _error = null;
-    notifyListeners();
 
     try {
       await _clienteRepository.updateContacto(
         email: email,
         telefono: telefono,
       );
-      await loadProfile();
       return true;
     } catch (error) {
       _error = error.toString();
       return false;
-    } finally {
-      _isSaving = false;
-      notifyListeners();
+    }
+  }
+
+  Future<bool> updatePerfilNegocio({
+    required String tipoNegocio,
+    required String nombreNegocio,
+    required String ubicacionNegocio,
+    required int antiguedadMeses,
+    required double ingresosEstimados,
+    required double gastosMensuales,
+  }) async {
+    _error = null;
+
+    try {
+      await _authRepository.savePerfilNegocio(
+        tipoNegocio: tipoNegocio,
+        nombreNegocio: nombreNegocio,
+        ubicacionNegocio: ubicacionNegocio,
+        antiguedadMeses: antiguedadMeses,
+        ingresosEstimados: ingresosEstimados,
+        gastosMensuales: gastosMensuales,
+      );
+      return true;
+    } catch (error) {
+      _error = error.toString();
+      return false;
     }
   }
 
@@ -84,5 +137,12 @@ class ProfileViewModel extends ChangeNotifier {
     if (value == null) return null;
     if (value is num) return value;
     return num.tryParse(value.toString());
+  }
+
+  int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../viewmodels/cuenta_view_model.dart';
-import '../../widgets/primary_action_button.dart';
 
-Future<bool> showTransferenciaSheet(
+Future<bool> showDepositoSheet(
   BuildContext context,
   CuentaViewModel viewModel,
 ) {
@@ -12,7 +12,7 @@ Future<bool> showTransferenciaSheet(
     isScrollControlled: true,
     showDragHandle: true,
     builder: (sheetContext) {
-      return _TransferenciaSheet(
+      return _DepositoSheet(
         viewModel: viewModel,
         onSaved: () => Navigator.of(sheetContext).pop(true),
       );
@@ -20,8 +20,8 @@ Future<bool> showTransferenciaSheet(
   ).then((value) => value ?? false);
 }
 
-class _TransferenciaSheet extends StatefulWidget {
-  const _TransferenciaSheet({
+class _DepositoSheet extends StatefulWidget {
+  const _DepositoSheet({
     required this.viewModel,
     required this.onSaved,
   });
@@ -30,28 +30,25 @@ class _TransferenciaSheet extends StatefulWidget {
   final VoidCallback onSaved;
 
   @override
-  State<_TransferenciaSheet> createState() => _TransferenciaSheetState();
+  State<_DepositoSheet> createState() => _DepositoSheetState();
 }
 
-class _TransferenciaSheetState extends State<_TransferenciaSheet> {
-  final _cuentaController = TextEditingController();
+class _DepositoSheetState extends State<_DepositoSheet> {
   final _montoController = TextEditingController();
-  final _conceptoController = TextEditingController(text: 'Transferencia');
+  final _conceptoController = TextEditingController(text: 'Deposito simulado');
 
   bool _isSaving = false;
   String? _error;
 
   @override
   void dispose() {
-    _cuentaController.dispose();
     _montoController.dispose();
     _conceptoController.dispose();
     super.dispose();
   }
 
-  Future<void> _transferir() async {
+  Future<void> _confirmar() async {
     final monto = double.tryParse(_montoController.text.trim());
-    final cuentaDestino = _cuentaController.text.trim();
     final concepto = _conceptoController.text.trim();
 
     if (monto == null || monto <= 0) {
@@ -61,20 +58,12 @@ class _TransferenciaSheetState extends State<_TransferenciaSheet> {
       return;
     }
 
-    if (cuentaDestino.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa la cuenta destino.')),
-      );
-      return;
-    }
-
     setState(() {
       _isSaving = true;
       _error = null;
     });
 
-    final ok = await widget.viewModel.transferir(
-      cuentaDestino: cuentaDestino,
+    final ok = await widget.viewModel.depositar(
       monto: monto,
       concepto: concepto.isEmpty ? null : concepto,
     );
@@ -106,26 +95,12 @@ class _TransferenciaSheetState extends State<_TransferenciaSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Transferencia simulada',
+              'Deposito simulado',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Saldo disponible: ${widget.viewModel.saldo}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _cuentaController,
-              decoration: const InputDecoration(
-                labelText: 'Numero de cuenta destino',
-                border: OutlineInputBorder(),
-                hintText: '001-45678901',
-              ),
-            ),
-            const SizedBox(height: 12),
             TextField(
               controller: _montoController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -147,15 +122,20 @@ class _TransferenciaSheetState extends State<_TransferenciaSheet> {
               Text(
                 _error!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
+                  color: AppColors.error,
                 ),
               ),
             ],
             const SizedBox(height: 20),
-            PrimaryActionButton(
-              label: 'Transferir',
-              isLoading: _isSaving,
-              onPressed: _isSaving ? null : _transferir,
+            FilledButton(
+              onPressed: _isSaving ? null : _confirmar,
+              child: _isSaving
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Confirmar deposito'),
             ),
           ],
         ),

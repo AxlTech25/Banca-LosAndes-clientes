@@ -56,6 +56,8 @@ class _SolicitudDocumentosScreenState extends State<SolicitudDocumentosScreen> {
   }
 
   Future<void> _pickAndUpload(String tipo) async {
+    if (_uploadingTipo != null) return;
+
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       withData: true,
@@ -229,18 +231,27 @@ class _DocumentoTile extends StatelessWidget {
                 height: 24,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : subido
-            ? IconButton(
-                icon: const Icon(Icons.visibility_outlined),
-                onPressed: onPreview,
-              )
-            : canUpload
-            ? IconButton(
-                icon: const Icon(Icons.add_photo_alternate_outlined),
-                onPressed: onUpload,
-              )
-            : null,
-        onTap: subido ? onPreview : (canUpload ? onUpload : null),
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (subido)
+                    IconButton(
+                      icon: const Icon(Icons.visibility_outlined),
+                      onPressed: onPreview,
+                    ),
+                  if (canUpload)
+                    IconButton(
+                      icon: Icon(
+                        subido
+                            ? Icons.refresh_outlined
+                            : Icons.add_photo_alternate_outlined,
+                      ),
+                      tooltip: subido ? 'Reemplazar foto' : 'Subir foto',
+                      onPressed: onUpload,
+                    ),
+                ],
+              ),
+        onTap: canUpload ? onUpload : (subido ? onPreview : null),
       ),
     );
   }

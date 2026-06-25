@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/clientes/cliente_repository.dart';
+import '../../../domain/models/solicitud_model.dart';
 import '../../viewmodels/credits_view_model.dart';
+import 'credito_cronograma_screen.dart';
 import 'credit_detail_screen.dart';
 
 class CreditsTab extends StatefulWidget {
@@ -26,11 +28,22 @@ class _CreditsTabState extends State<CreditsTab> {
     widget.viewModel.loadCreditos();
   }
 
-  Future<void> _openDetail(CreditoModel credito) async {
+  Future<void> _openEntry(CreditoTabEntry entry) async {
+    if (entry.kind == CreditoTabEntryKind.solicitudAprobada) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CreditoCronogramaScreen(
+            solicitudId: entry.solicitud!.id,
+          ),
+        ),
+      );
+      return;
+    }
+
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => CreditDetailScreen(
-          creditoId: credito.id,
+          creditoId: entry.credito!.id,
           onPaymentComplete: widget.onDataChanged,
         ),
       ),
@@ -46,11 +59,11 @@ class _CreditsTabState extends State<CreditsTab> {
     return AnimatedBuilder(
       animation: widget.viewModel,
       builder: (context, _) {
-        if (widget.viewModel.isLoading && widget.viewModel.creditos.isEmpty) {
+        if (widget.viewModel.isLoading && widget.viewModel.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (widget.viewModel.creditos.isEmpty) {
+        if (widget.viewModel.isEmpty) {
           return RefreshIndicator(
             onRefresh: widget.viewModel.loadCreditos,
             child: ListView(
@@ -79,7 +92,8 @@ class _CreditsTabState extends State<CreditsTab> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Cuando tu asesor registre un credito, aparecera aqui.',
+                            'Cuando aprueben tu solicitud o tu asesor registre un credito, '
+                            'aparecera aqui con el cronograma de pagos.',
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(color: AppColors.onSurfaceVariant),
@@ -99,18 +113,124 @@ class _CreditsTabState extends State<CreditsTab> {
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
-            itemCount: widget.viewModel.creditos.length,
+            itemCount: widget.viewModel.entries.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final credito = widget.viewModel.creditos[index];
+              final entry = widget.viewModel.entries[index];
+              if (entry.kind == CreditoTabEntryKind.solicitudAprobada) {
+                return _SolicitudAprobadaCard(
+                  solicitud: entry.solicitud!,
+                  onTap: () => _openEntry(entry),
+                );
+              }
               return _CreditoCard(
-                credito: credito,
-                onTap: () => _openDetail(credito),
+                credito: entry.credito!,
+                onTap: () => _openEntry(entry),
               );
             },
           ),
         );
       },
+    );
+  }
+}
+
+class _SolicitudAprobadaCard extends StatelessWidget {
+  const _SolicitudAprobadaCard({
+    required this.solicitud,
+    required this.onTap,
+  });
+
+  final SolicitudModel solicitud;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final monto = solicitud.montoAprobado ?? solicitud.montoSolicitado;
+    final aprobada = solicitud.estado == 'aprobada';
+
+    return Material(
+      color: AppColors.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: aprobada
+                  ? Colors.green.shade300
+                  : AppColors.primaryContainer,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: aprobada
+                    ? Colors.green.shade50
+                    : AppColors.primaryContainer,
+                child: Icon(
+                  aprobada ? Icons.verified_outlined : Icons.account_balance,
+                  color: aprobada ? Colors.green.shade700 : AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      solicitud.productoLabel,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      SolicitudModel.labelForEstado(solicitud.estado),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: aprobada
+                            ? Colors.green.shade700
+                            : AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (solicitud.cuotaMensualMostrada != null)
+                      Text(
+                        'Cuota ${ClienteRepository.formatBalance(solicitud.cuotaMensualMostrada)} · '
+                        '${solicitud.plazoMeses ?? '-'} cuotas',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    Text(
+                      'Toca para ver cronograma',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    ClienteRepository.formatBalance(monto),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: AppColors.outline),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

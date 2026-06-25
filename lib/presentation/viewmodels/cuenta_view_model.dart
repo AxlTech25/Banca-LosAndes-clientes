@@ -15,15 +15,14 @@ class CuentaViewModel extends ChangeNotifier {
   Map<String, dynamic>? _cuenta;
   List<MovimientoCuentaModel> _movimientos = [];
   bool _isLoading = true;
-  bool _isSubmitting = false;
   String? _error;
   RealtimeChannel? _cuentasChannel;
   RealtimeChannel? _movimientosChannel;
+  bool _isReloading = false;
 
   Map<String, dynamic>? get cuenta => _cuenta;
   List<MovimientoCuentaModel> get movimientos => _movimientos;
   bool get isLoading => _isLoading;
-  bool get isSubmitting => _isSubmitting;
   String? get error => _error;
 
   String get numeroCuenta => _cuenta?['numero_cuenta']?.toString() ?? '-';
@@ -36,12 +35,12 @@ class CuentaViewModel extends ChangeNotifier {
     _cuentasChannel = RealtimeHelper.subscribeTable(
       channelName: 'client-cuentas',
       table: 'cuentas',
-      onChange: load,
+      onChange: refresh,
     );
     _movimientosChannel = RealtimeHelper.subscribeTable(
       channelName: 'client-movimientos',
       table: 'movimientos_cuenta',
-      onChange: load,
+      onChange: refresh,
     );
   }
 
@@ -51,12 +50,7 @@ class CuentaViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final results = await Future.wait([
-        _repository.fetchCuentaAhorros(),
-        _repository.fetchMovimientos(),
-      ]);
-      _cuenta = results[0] as Map<String, dynamic>?;
-      _movimientos = results[1] as List<MovimientoCuentaModel>;
+      await _reloadData();
     } catch (error) {
       _error = error.toString();
     } finally {
@@ -65,24 +59,43 @@ class CuentaViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> refresh() async {
+    if (_isReloading) return;
+    _isReloading = true;
+
+    try {
+      await _reloadData();
+      _error = null;
+      notifyListeners();
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+    } finally {
+      _isReloading = false;
+    }
+  }
+
+  Future<void> _reloadData() async {
+    final results = await Future.wait([
+      _repository.fetchCuentaAhorros(),
+      _repository.fetchMovimientos(),
+    ]);
+    _cuenta = results[0] as Map<String, dynamic>?;
+    _movimientos = results[1] as List<MovimientoCuentaModel>;
+  }
+
   Future<bool> depositar({required double monto, String? concepto}) async {
-    _isSubmitting = true;
     _error = null;
-    notifyListeners();
 
     try {
       await _repository.registrarDepositoSimulado(
         monto: monto,
         concepto: concepto,
       );
-      await load();
       return true;
     } catch (error) {
       _error = error.toString();
       return false;
-    } finally {
-      _isSubmitting = false;
-      notifyListeners();
     }
   }
 
@@ -91,9 +104,7 @@ class CuentaViewModel extends ChangeNotifier {
     required double monto,
     String? concepto,
   }) async {
-    _isSubmitting = true;
     _error = null;
-    notifyListeners();
 
     try {
       await _repository.registrarTransferenciaSimulada(
@@ -101,14 +112,10 @@ class CuentaViewModel extends ChangeNotifier {
         monto: monto,
         concepto: concepto,
       );
-      await load();
       return true;
     } catch (error) {
       _error = error.toString();
       return false;
-    } finally {
-      _isSubmitting = false;
-      notifyListeners();
     }
   }
 

@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/movimiento_cuenta_model.dart';
 import '../../viewmodels/cuenta_view_model.dart';
+import 'deposito_sheet.dart';
 import 'transferencia_sheet.dart';
 
 class CuentaScreen extends StatefulWidget {
@@ -35,96 +36,38 @@ class _CuentaScreenState extends State<CuentaScreen> {
   }
 
   Future<void> _depositar() async {
-    final montoController = TextEditingController();
-    final conceptoController = TextEditingController(text: 'Deposito simulado');
+    final messenger = ScaffoldMessenger.of(context);
 
-    final ok = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            bottom: MediaQuery.viewInsetsOf(context).bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Deposito simulado',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: montoController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Monto (S/)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: conceptoController,
-                decoration: const InputDecoration(
-                  labelText: 'Concepto',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Confirmar deposito'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    final saved = await showDepositoSheet(context, _viewModel);
+    if (!saved || !mounted) return;
 
-    if (ok != true || !mounted) {
-      montoController.dispose();
-      conceptoController.dispose();
-      return;
-    }
-
-    final monto = double.tryParse(montoController.text.trim());
-    final concepto = conceptoController.text.trim();
-    montoController.dispose();
-    conceptoController.dispose();
-
-    if (monto == null || monto <= 0) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un monto valido.')),
-      );
-      return;
-    }
-
-    final success = await _viewModel.depositar(
-      monto: monto,
-      concepto: concepto.isEmpty ? null : concepto,
-    );
+    await _viewModel.refresh();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+
+    messenger.showSnackBar(
       SnackBar(
         content: Text(
-          success ? 'Deposito registrado.' : (_viewModel.error ?? 'Error'),
+          _viewModel.error ?? 'Deposito registrado.',
         ),
       ),
     );
   }
 
   Future<void> _transferir() async {
-    final success = await showTransferenciaSheet(context, _viewModel);
-    if (!mounted || success != true) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Transferencia realizada.')),
+    final messenger = ScaffoldMessenger.of(context);
+
+    final saved = await showTransferenciaSheet(context, _viewModel);
+    if (!saved || !mounted) return;
+
+    await _viewModel.refresh();
+    if (!mounted) return;
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          _viewModel.error ?? 'Transferencia realizada.',
+        ),
+      ),
     );
   }
 
@@ -151,7 +94,7 @@ class _CuentaScreenState extends State<CuentaScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: _viewModel.isSubmitting ? null : _depositar,
+                        onPressed: _depositar,
                         icon: const Icon(Icons.add),
                         label: const Text('Depositar'),
                       ),
@@ -159,17 +102,13 @@ class _CuentaScreenState extends State<CuentaScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton.icon(
-                        onPressed: _viewModel.isSubmitting ? null : _transferir,
+                        onPressed: _transferir,
                         icon: const Icon(Icons.send_outlined),
                         label: const Text('Transferir'),
                       ),
                     ),
                   ],
                 ),
-                if (_viewModel.isSubmitting) ...[
-                  const SizedBox(height: 16),
-                  const Center(child: CircularProgressIndicator()),
-                ],
                 const SizedBox(height: 24),
                 Text(
                   'MOVIMIENTOS',

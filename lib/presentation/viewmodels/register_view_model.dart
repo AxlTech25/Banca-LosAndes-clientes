@@ -23,6 +23,13 @@ class RegisterViewModel extends ChangeNotifier {
     required String fullName,
     required String dni,
     required String password,
+    required String telefono,
+    required String tipoNegocio,
+    required String nombreNegocio,
+    required String ubicacionNegocio,
+    required int antiguedadMeses,
+    required double ingresosEstimados,
+    required double gastosMensuales,
   }) async {
     _isSubmitting = true;
     notifyListeners();
@@ -32,6 +39,13 @@ class RegisterViewModel extends ChangeNotifier {
         fullName: fullName,
         dni: dni,
         password: password,
+        telefono: telefono,
+        tipoNegocio: tipoNegocio,
+        nombreNegocio: nombreNegocio,
+        ubicacionNegocio: ubicacionNegocio,
+        antiguedadMeses: antiguedadMeses,
+        ingresosEstimados: ingresosEstimados,
+        gastosMensuales: gastosMensuales,
       );
     } finally {
       _isSubmitting = false;

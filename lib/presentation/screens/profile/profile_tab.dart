@@ -8,6 +8,7 @@ import '../cuenta/cuenta_screen.dart';
 import '../../viewmodels/profile_view_model.dart';
 import 'change_password_sheet.dart';
 import 'edit_contact_sheet.dart';
+import 'edit_negocio_sheet.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key, required this.viewModel});
@@ -117,6 +118,57 @@ class _ProfileTabState extends State<ProfileTab> {
                           'Telefono',
                           widget.viewModel.telefono,
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _Section(
+                      title: 'Mi negocio',
+                      trailing: TextButton.icon(
+                        onPressed: () =>
+                            showEditNegocioSheet(context, widget.viewModel),
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: const Text('Editar'),
+                      ),
+                      children: [
+                        if (!widget.viewModel.tienePerfilNegocio)
+                          Text(
+                            'Sin datos de negocio registrados. Toca Editar para completarlos.',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          )
+                        else ...[
+                          _Tile(
+                            Icons.storefront_outlined,
+                            'Negocio',
+                            widget.viewModel.nombreNegocio ?? '-',
+                          ),
+                          _Tile(
+                            Icons.category_outlined,
+                            'Tipo',
+                            widget.viewModel.tipoNegocio ?? '-',
+                          ),
+                          _Tile(
+                            Icons.location_on_outlined,
+                            'Ubicacion',
+                            widget.viewModel.ubicacionNegocio ?? '-',
+                          ),
+                          _Tile(
+                            Icons.schedule_outlined,
+                            'Antiguedad',
+                            '${widget.viewModel.antiguedadNegocioMeses ?? '-'} meses',
+                          ),
+                          _Tile(
+                            Icons.trending_up_outlined,
+                            'Ingresos mensuales',
+                            widget.viewModel.ingresosEstimados,
+                          ),
+                          _Tile(
+                            Icons.payments_outlined,
+                            'Gastos mensuales',
+                            widget.viewModel.gastosMensuales,
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 16),

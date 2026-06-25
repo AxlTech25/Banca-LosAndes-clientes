@@ -1,14 +1,24 @@
+import 'credit_product_models.dart';
+
 class SolicitudModel {
   const SolicitudModel({
     required this.id,
     this.numeroExpediente,
     this.estado,
+    this.producto,
     this.montoSolicitado,
     this.montoAprobado,
     this.plazoMeses,
     this.destinoCredito,
     this.nombreNegocio,
     this.tipoNegocio,
+    this.ubicacionNegocio,
+    this.gastosMensuales,
+    this.garantia,
+    this.teaReferencial,
+    this.cuotaEstimada,
+    this.cuotaMensualAprobada,
+    this.fechaDesembolsoProgramada,
     this.motivoRechazo,
     this.condicionAdicional,
     this.createdAt,
@@ -20,12 +30,20 @@ class SolicitudModel {
       id: map['id']?.toString() ?? '',
       numeroExpediente: map['numero_expediente']?.toString(),
       estado: map['estado']?.toString() ?? 'borrador',
+      producto: map['producto']?.toString(),
       montoSolicitado: _asNum(map['monto_solicitado']),
       montoAprobado: _asNum(map['monto_aprobado']),
       plazoMeses: _asIntOrNull(map['plazo_meses']),
       destinoCredito: map['destino_credito']?.toString(),
       nombreNegocio: map['nombre_negocio']?.toString(),
       tipoNegocio: map['tipo_negocio']?.toString(),
+      ubicacionNegocio: map['ubicacion_negocio']?.toString(),
+      gastosMensuales: _asNum(map['gastos_mensuales']),
+      garantia: map['garantia']?.toString(),
+      teaReferencial: _asNum(map['tea_referencial']),
+      cuotaEstimada: _asNum(map['cuota_estimada']),
+      cuotaMensualAprobada: _asNum(map['cuota_mensual_aprobada']),
+      fechaDesembolsoProgramada: map['fecha_desembolso_programada']?.toString(),
       motivoRechazo: map['motivo_rechazo']?.toString(),
       condicionAdicional: map['condicion_adicional']?.toString(),
       createdAt: map['created_at']?.toString(),
@@ -36,16 +54,31 @@ class SolicitudModel {
   final String id;
   final String? numeroExpediente;
   final String? estado;
+  final String? producto;
   final num? montoSolicitado;
   final num? montoAprobado;
   final int? plazoMeses;
   final String? destinoCredito;
   final String? nombreNegocio;
   final String? tipoNegocio;
+  final String? ubicacionNegocio;
+  final num? gastosMensuales;
+  final String? garantia;
+  final num? teaReferencial;
+  final num? cuotaEstimada;
+  final num? cuotaMensualAprobada;
+  final String? fechaDesembolsoProgramada;
   final String? motivoRechazo;
   final String? condicionAdicional;
   final String? createdAt;
   final String? firmaClienteBase64;
+
+  String get productoLabel {
+    if (producto == CreditoProducto.codigo) return CreditoProducto.nombre;
+    return producto ?? CreditoProducto.nombre;
+  }
+
+  String get garantiaLabel => GarantiaTipos.label(garantia);
 
   String get estadoLabel => labelForEstado(estado);
 
@@ -54,6 +87,12 @@ class SolicitudModel {
 
   bool get puedeSubirDocumentos =>
       estado == 'borrador' || estado == 'pendiente' || estado == 'observada';
+
+  bool get muestraCronograma =>
+      estado == 'aprobada' || estado == 'desembolsada';
+
+  num? get cuotaMensualMostrada =>
+      cuotaMensualAprobada ?? cuotaEstimada;
 
   static String labelForEstado(String? estado) {
     return switch (estado) {
@@ -160,24 +199,88 @@ class CampanaModel {
   final String? fechaVencimiento;
 }
 
+class SolicitudCreditoPrefill {
+  const SolicitudCreditoPrefill({
+    required this.montoSolicitado,
+    required this.plazoMeses,
+    required this.destinoCredito,
+    this.garantia = GarantiaTipos.sinGarantia,
+    this.conSeguroDesgravamen = false,
+    this.teaReferencial,
+  });
+
+  final double montoSolicitado;
+  final int plazoMeses;
+  final String destinoCredito;
+  final String garantia;
+  final bool conSeguroDesgravamen;
+  final double? teaReferencial;
+}
+
 class NuevaSolicitudInput {
   const NuevaSolicitudInput({
     required this.tipoNegocio,
     required this.nombreNegocio,
+    required this.ubicacionNegocio,
     required this.antiguedadMeses,
     required this.ingresosEstimados,
+    required this.gastosMensuales,
     required this.montoSolicitado,
     required this.plazoMeses,
     required this.destinoCredito,
+    required this.garantia,
+    required this.conSeguroDesgravamen,
+    this.teaReferencial,
+    this.cuotaEstimada,
   });
 
   final String tipoNegocio;
   final String nombreNegocio;
+  final String ubicacionNegocio;
   final int antiguedadMeses;
   final double ingresosEstimados;
+  final double gastosMensuales;
   final double montoSolicitado;
   final int plazoMeses;
   final String destinoCredito;
+  final String garantia;
+  final bool conSeguroDesgravamen;
+  final double? teaReferencial;
+  final double? cuotaEstimada;
+
+  double get teaAplicada => conSeguroDesgravamen
+      ? CreditoProducto.teaConDesgravamen
+      : CreditoProducto.teaSinDesgravamen;
+}
+
+class CronogramaCuotaModel {
+  const CronogramaCuotaModel({
+    required this.numeroCuota,
+    required this.fechaPago,
+    required this.montoCuota,
+    required this.capital,
+    required this.interes,
+    required this.saldo,
+  });
+
+  factory CronogramaCuotaModel.fromMap(Map<String, dynamic> map) {
+    return CronogramaCuotaModel(
+      numeroCuota: SolicitudModel._asIntOrNull(map['numero_cuota']) ?? 0,
+      fechaPago: DateTime.tryParse(map['fecha_pago']?.toString() ?? '') ??
+          DateTime.now(),
+      montoCuota: SolicitudModel._asNum(map['monto_cuota'])?.toDouble() ?? 0,
+      capital: SolicitudModel._asNum(map['capital'])?.toDouble() ?? 0,
+      interes: SolicitudModel._asNum(map['interes'])?.toDouble() ?? 0,
+      saldo: SolicitudModel._asNum(map['saldo'])?.toDouble() ?? 0,
+    );
+  }
+
+  final int numeroCuota;
+  final DateTime fechaPago;
+  final double montoCuota;
+  final double capital;
+  final double interes;
+  final double saldo;
 }
 
 class SolicitudDocumentoModel {

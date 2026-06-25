@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/clientes/cliente_repository.dart';
+import '../../../domain/models/credit_product_models.dart';
 import '../../../domain/models/solicitud_model.dart';
 import '../../viewmodels/request_credit_view_model.dart';
 import '../../widgets/primary_action_button.dart';
@@ -24,7 +25,7 @@ class _RequestTabState extends State<RequestTab> {
     widget.viewModel.load();
   }
 
-  Future<void> _openNewSolicitud({NuevaSolicitudInput? prefilled}) async {
+  Future<void> _openNewSolicitud({SolicitudCreditoPrefill? prefilled}) async {
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => NewSolicitudScreen(
@@ -73,14 +74,13 @@ class _RequestTabState extends State<RequestTab> {
                     subtitle:
                         'Plazo sugerido: ${o.plazoSugeridoMeses ?? '-'} meses',
                     onTap: () => _openNewSolicitud(
-                      prefilled: NuevaSolicitudInput(
-                        tipoNegocio: widget.viewModel.clienteTipoNegocio ?? 'Comercio',
-                        nombreNegocio: widget.viewModel.clienteNombreNegocio ?? '',
-                        antiguedadMeses: widget.viewModel.clienteAntiguedadMeses ?? 12,
-                        ingresosEstimados: widget.viewModel.clienteIngresos ?? 2000,
+                      prefilled: SolicitudCreditoPrefill(
                         montoSolicitado: (o.montoMaximo ?? 0).toDouble(),
                         plazoMeses: o.plazoSugeridoMeses ?? 12,
                         destinoCredito: 'Capital de trabajo',
+                        garantia: GarantiaTipos.sinGarantia,
+                        conSeguroDesgravamen: false,
+                        teaReferencial: (o.teaReferencial ?? CreditoProducto.teaSinDesgravamen).toDouble(),
                       ),
                     ),
                   ),
@@ -96,14 +96,12 @@ class _RequestTabState extends State<RequestTab> {
                     subtitle:
                         'Monto: ${ClienteRepository.formatBalance(c.montoOfertado)}',
                     onTap: () => _openNewSolicitud(
-                      prefilled: NuevaSolicitudInput(
-                        tipoNegocio: widget.viewModel.clienteTipoNegocio ?? 'Comercio',
-                        nombreNegocio: widget.viewModel.clienteNombreNegocio ?? '',
-                        antiguedadMeses: widget.viewModel.clienteAntiguedadMeses ?? 12,
-                        ingresosEstimados: widget.viewModel.clienteIngresos ?? 2000,
+                      prefilled: SolicitudCreditoPrefill(
                         montoSolicitado: (c.montoOfertado ?? 0).toDouble(),
                         plazoMeses: 12,
                         destinoCredito: c.tipoCampana ?? 'Campana bancaria',
+                        garantia: GarantiaTipos.sinGarantia,
+                        conSeguroDesgravamen: false,
                       ),
                     ),
                   ),

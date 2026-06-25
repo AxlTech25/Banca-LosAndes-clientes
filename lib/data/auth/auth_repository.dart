@@ -63,6 +63,13 @@ class AuthRepository {
     required String dni,
     required String password,
     String? email,
+    String? telefono,
+    String? tipoNegocio,
+    String? nombreNegocio,
+    String? ubicacionNegocio,
+    int? antiguedadMeses,
+    double? ingresosEstimados,
+    double? gastosMensuales,
   }) async {
     final nameParts = _splitFullName(fullName);
     final normalizedDni = dni.trim();
@@ -101,7 +108,24 @@ class AuthRepository {
         nombres: nameParts.$1,
         apellidos: nameParts.$2,
         email: email,
+        telefono: telefono,
       );
+
+      if (tipoNegocio != null &&
+          nombreNegocio != null &&
+          ubicacionNegocio != null &&
+          antiguedadMeses != null &&
+          ingresosEstimados != null &&
+          gastosMensuales != null) {
+        await savePerfilNegocio(
+          tipoNegocio: tipoNegocio,
+          nombreNegocio: nombreNegocio,
+          ubicacionNegocio: ubicacionNegocio,
+          antiguedadMeses: antiguedadMeses,
+          ingresosEstimados: ingresosEstimados,
+          gastosMensuales: gastosMensuales,
+        );
+      }
     } on AuthException catch (error) {
       throw AuthFailure(_mapAuthMessage(error.message));
     } on PostgrestException catch (error) {
@@ -126,12 +150,37 @@ class AuthRepository {
           .select(
             'id, nombres, apellidos, numero_documento, email, telefono, '
             'tipo_negocio, nombre_negocio, antiguedad_negocio_meses, ingresos_estimados, '
-            'calificacion_sbs',
+            'gastos_mensuales, direccion, calificacion_sbs',
           )
           .eq('user_id', user.id)
           .maybeSingle();
     } on PostgrestException {
       return null;
+    }
+  }
+
+  Future<void> savePerfilNegocio({
+    required String tipoNegocio,
+    required String nombreNegocio,
+    required String ubicacionNegocio,
+    required int antiguedadMeses,
+    required double ingresosEstimados,
+    required double gastosMensuales,
+  }) async {
+    try {
+      await _client.rpc(
+        'actualizar_perfil_negocio_cliente',
+        params: {
+          'p_tipo_negocio': tipoNegocio,
+          'p_nombre_negocio': nombreNegocio,
+          'p_ubicacion_negocio': ubicacionNegocio,
+          'p_antiguedad_meses': antiguedadMeses,
+          'p_ingresos_estimados': ingresosEstimados,
+          'p_gastos_mensuales': gastosMensuales,
+        },
+      );
+    } on PostgrestException catch (error) {
+      throw AuthFailure(error.message);
     }
   }
 
@@ -185,6 +234,7 @@ class AuthRepository {
     required String nombres,
     required String apellidos,
     String? email,
+    String? telefono,
   }) async {
     await _client.rpc(
       'vincular_cliente_registro',
@@ -193,6 +243,7 @@ class AuthRepository {
         'p_nombres': nombres,
         'p_apellidos': apellidos,
         'p_email': email,
+        'p_telefono': telefono,
       },
     );
   }
