@@ -12,12 +12,14 @@ class HomeTab extends StatelessWidget {
     this.onNavigateToTab,
     this.onOpenCredito,
     this.onOpenCuenta,
+    this.onPagarCuota,
   });
 
   final DashboardViewModel viewModel;
   final void Function(int tabIndex)? onNavigateToTab;
   final void Function(String creditoId)? onOpenCredito;
   final VoidCallback? onOpenCuenta;
+  final VoidCallback? onPagarCuota;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +64,7 @@ class HomeTab extends StatelessWidget {
                   viewModel: viewModel,
                   onOpenCredito: onOpenCredito,
                   onNavigateToCredits: () => onNavigateToTab?.call(1),
+                  onPagarCuota: onPagarCuota,
                 ),
               ],
             ),
@@ -445,11 +448,13 @@ class _CommitmentsSection extends StatelessWidget {
     required this.viewModel,
     this.onOpenCredito,
     this.onNavigateToCredits,
+    this.onPagarCuota,
   });
 
   final DashboardViewModel viewModel;
   final void Function(String creditoId)? onOpenCredito;
   final VoidCallback? onNavigateToCredits;
+  final VoidCallback? onPagarCuota;
 
   @override
   Widget build(BuildContext context) {
@@ -520,6 +525,14 @@ class _CommitmentsSection extends StatelessWidget {
                                 : AppColors.onSurfaceVariant,
                           ),
                         ),
+                        if (viewModel.hasCreditoActivo)
+                          Text(
+                            'Cuota mensual: ${viewModel.cuotaPagoLabel}',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -528,7 +541,7 @@ class _CommitmentsSection extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          'Saldo',
+                          viewModel.canPagarCuota ? 'Proxima cuota' : 'Saldo',
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: AppColors.onSurfaceVariant,
                           ),
@@ -556,6 +569,14 @@ class _CommitmentsSection extends StatelessWidget {
             ),
           ),
         ),
+        if (viewModel.canPagarCuota) ...[
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: onPagarCuota,
+            icon: const Icon(Icons.payments_outlined),
+            label: Text('Pagar cuota ${viewModel.cuotaPagoLabel}'),
+          ),
+        ],
       ],
     );
   }

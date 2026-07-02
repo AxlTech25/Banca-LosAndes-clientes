@@ -5,39 +5,45 @@ import '../../../data/clientes/cliente_repository.dart';
 import '../../../domain/models/fase4_models.dart';
 import '../../viewmodels/credits_view_model.dart';
 import '../../widgets/primary_action_button.dart';
-import 'pago_credito_sheet.dart';
+import 'pago_credito_flow.dart';
 
 class CreditDetailScreen extends StatefulWidget {
   const CreditDetailScreen({
     super.key,
     required this.creditoId,
     this.onPaymentComplete,
+    this.creditsViewModel,
   });
 
   final String creditoId;
   final VoidCallback? onPaymentComplete;
+  final CreditsViewModel? creditsViewModel;
 
   @override
   State<CreditDetailScreen> createState() => _CreditDetailScreenState();
 }
 
 class _CreditDetailScreenState extends State<CreditDetailScreen> {
-  final _viewModel = CreditsViewModel();
+  late final CreditsViewModel _viewModel;
+  late final bool _ownsViewModel;
   final _clienteRepository = ClienteRepository();
 
   CreditoModel? _credito;
   List<PagoCreditoModel> _pagos = [];
   bool _isLoading = true;
+  bool _isPaying = false;
 
   @override
   void initState() {
     super.initState();
+    _ownsViewModel = widget.creditsViewModel == null;
+    _viewModel = widget.creditsViewModel ?? CreditsViewModel();
     _load();
   }
 
   @override
   void dispose() {
-    _viewModel.dispose();
+    if (_ownsViewModel) _viewModel.dispose();
     super.dispose();
   }
 
@@ -55,63 +61,43 @@ class _CreditDetailScreenState extends State<CreditDetailScreen> {
 
   Future<void> _pagarCuota() async {
     final credito = _credito;
-    if (credito == null || !credito.isVigente) return;
+    if (credito == null || !credito.isVigente || _isPaying) return;
 
+    setState(() => _isPaying = true);
     final monto = credito.cuotaEstimada.toDouble();
-    final selection = await showPagoCreditoSheet(
+
+    final ok = await ejecutarPagoCuota(
       context,
       viewModel: _viewModel,
-      monto: monto,
-    );
-    if (selection == null || !mounted) return;
-
-    final metodo = selection['metodo'] as String;
-    final pagoId = await _viewModel.pagarCuota(
       creditoId: credito.id,
       monto: monto,
-      metodoPago: metodo,
+      onComplete: () async {
+        widget.onPaymentComplete?.call();
+        await _viewModel.refreshCreditos();
+        await _load();
+      },
     );
 
     if (!mounted) return;
+    setState(() => _isPaying = false);
 
-    if (pagoId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_viewModel.error ?? 'No se pudo registrar el pago.')),
-      );
-      return;
+    if (ok && mounted) {
+      Navigator.pop(context, true);
     }
-
-    final metodoEnum = MetodoPagoCredito.values.firstWhere(
-      (m) => m.value == metodo,
-    );
-
-    await showPagoPendienteDialog(
-      context,
-      pagoId: pagoId,
-      metodo: metodoEnum,
-      monto: monto,
-      viewModel: _viewModel,
-      onConfirmed: () async {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pago confirmado y aplicado a tu credito.')),
-        );
-        widget.onPaymentComplete?.call();
-        await _load();
-        if (mounted) Navigator.pop(context, true);
-      },
-    );
-    await _load();
   }
 
   Future<void> _confirmarPagoPendiente(PagoCreditoModel pago) async {
+    setState(() => _isPaying = true);
     final ok = await _viewModel.confirmarPagoPendiente(pago.id);
     if (!mounted) return;
+    setState(() => _isPaying = false);
+
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Pago confirmado.')),
       );
       widget.onPaymentComplete?.call();
+      await _viewModel.refreshCreditos();
       await _load();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -144,17 +130,17 @@ class _CreditDetailScreenState extends State<CreditDetailScreen> {
                     _PendientesCard(
                       pagos: pendientes,
                       onConfirmar: _confirmarPagoPendiente,
-                      isPaying: _viewModel.isPaying,
+                      isPaying: _isPaying,
                     ),
                   ],
                   const SizedBox(height: 16),
                   if (_credito!.isVigente && (_credito!.saldoActual ?? 0) > 0)
                     PrimaryActionButton(
-                      label: _viewModel.isPaying
+                      label: _isPaying
                           ? 'Procesando...'
                           : 'Pagar cuota (${ClienteRepository.formatBalance(_credito!.cuotaEstimada)})',
-                      isLoading: _viewModel.isPaying,
-                      onPressed: _viewModel.isPaying ? null : _pagarCuota,
+                      isLoading: _isPaying,
+                      onPressed: _isPaying ? null : _pagarCuota,
                     ),
                   const SizedBox(height: 24),
                   Text(

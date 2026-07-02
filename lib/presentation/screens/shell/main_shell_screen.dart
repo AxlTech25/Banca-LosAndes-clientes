@@ -21,6 +21,7 @@ import '../../widgets/banco_los_andes_logo.dart';
 
 import '../cuenta/cuenta_screen.dart';
 import '../credits/credit_detail_screen.dart';
+import '../credits/pago_credito_flow.dart';
 
 import '../credits/credits_tab.dart';
 
@@ -226,6 +227,27 @@ class _MainShellScreenState extends State<MainShellScreen> {
     await _profileViewModel.loadProfile();
   }
 
+  Future<void> _pagarCuotaFromHome() async {
+    final creditoId = _dashboardViewModel.creditoActivoId;
+    if (creditoId == null || !_dashboardViewModel.canPagarCuota) return;
+
+    final ok = await ejecutarPagoCuota(
+      context,
+      viewModel: _creditsViewModel,
+      creditoId: creditoId,
+      monto: _dashboardViewModel.cuotaPagoMonto,
+      onComplete: () async {
+        await _creditsViewModel.refreshCreditos();
+        await _dashboardViewModel.loadDashboard();
+      },
+    );
+
+    if (ok && mounted) {
+      await _creditsViewModel.refreshCreditos();
+      await _dashboardViewModel.loadDashboard();
+    }
+  }
+
   Future<void> _openCreditoFromHome(String creditoId) async {
 
     _onTabChanged(1);
@@ -237,6 +259,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         builder: (_) => CreditDetailScreen(
 
           creditoId: creditoId,
+
+          creditsViewModel: _creditsViewModel,
 
           onPaymentComplete: _dashboardViewModel.loadDashboard,
 
@@ -354,15 +378,27 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
           children: [
 
-            HomeTab(
+            AnimatedBuilder(
 
-              viewModel: _dashboardViewModel,
+              animation: _dashboardViewModel,
 
-              onNavigateToTab: _onTabChanged,
+              builder: (context, _) {
 
-              onOpenCredito: _openCreditoFromHome,
+                return HomeTab(
 
-              onOpenCuenta: _openCuentaFromHome,
+                  viewModel: _dashboardViewModel,
+
+                  onNavigateToTab: _onTabChanged,
+
+                  onOpenCredito: _openCreditoFromHome,
+
+                  onOpenCuenta: _openCuentaFromHome,
+
+                  onPagarCuota: _pagarCuotaFromHome,
+
+                );
+
+              },
 
             ),
 

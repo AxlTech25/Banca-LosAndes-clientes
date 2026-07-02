@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../domain/models/solicitud_model.dart';
-import 'cronograma_pagos_section.dart';
+import '../../widgets/cronograma_pagos_section.dart';
 
 class SolicitudCronogramaSection extends StatelessWidget {
   const SolicitudCronogramaSection({

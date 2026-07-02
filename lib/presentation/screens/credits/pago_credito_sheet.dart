@@ -8,7 +8,6 @@ import '../../viewmodels/credits_view_model.dart';
 
 Future<Map<String, dynamic>?> showPagoCreditoSheet(
   BuildContext context, {
-  required CreditsViewModel viewModel,
   required double monto,
 }) {
   MetodoPagoCredito? selected = MetodoPagoCredito.yape;
@@ -58,19 +57,13 @@ Future<Map<String, dynamic>?> showPagoCreditoSheet(
                 ),
                 const SizedBox(height: 8),
                 FilledButton(
-                  onPressed: selected == null || viewModel.isPaying
+                  onPressed: selected == null
                       ? null
                       : () => Navigator.pop(context, {
                           'metodo': selected!.value,
                           'monto': monto,
                         }),
-                  child: viewModel.isPaying
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Continuar al pago'),
+                  child: const Text('Continuar al pago'),
                 ),
               ],
             ),
@@ -93,60 +86,90 @@ Future<void> showPagoPendienteDialog(
     context: context,
     barrierDismissible: false,
     builder: (dialogContext) {
-      return AnimatedBuilder(
-        animation: viewModel,
-        builder: (context, _) {
-          return AlertDialog(
-            title: Text('Pago con ${metodo.label}'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Realiza el pago de ${ClienteRepository.formatBalance(monto)} '
-                  'usando el siguiente medio:',
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  metodo.instrucciones,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Cuando completes el pago, confirma para aplicarlo a tu credito. '
-                  'En produccion esto se confirmaria automaticamente via webhook.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancelar'),
-              ),
-              FilledButton(
-                onPressed: viewModel.isPaying
-                    ? null
-                    : () async {
-                        final ok = await viewModel.confirmarPagoPendiente(pagoId);
-                        if (!dialogContext.mounted) return;
-                        Navigator.pop(dialogContext);
-                        if (ok) onConfirmed();
-                      },
-                child: viewModel.isPaying
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Ya pague — confirmar'),
-              ),
-            ],
-          );
-        },
+      return _PagoPendienteDialog(
+        pagoId: pagoId,
+        metodo: metodo,
+        monto: monto,
+        viewModel: viewModel,
+        onConfirmed: onConfirmed,
       );
     },
   );
+}
+
+class _PagoPendienteDialog extends StatefulWidget {
+  const _PagoPendienteDialog({
+    required this.pagoId,
+    required this.metodo,
+    required this.monto,
+    required this.viewModel,
+    required this.onConfirmed,
+  });
+
+  final String pagoId;
+  final MetodoPagoCredito metodo;
+  final double monto;
+  final CreditsViewModel viewModel;
+  final VoidCallback onConfirmed;
+
+  @override
+  State<_PagoPendienteDialog> createState() => _PagoPendienteDialogState();
+}
+
+class _PagoPendienteDialogState extends State<_PagoPendienteDialog> {
+  bool _isConfirming = false;
+
+  Future<void> _confirmar() async {
+    setState(() => _isConfirming = true);
+    final ok = await widget.viewModel.confirmarPagoPendiente(widget.pagoId);
+    if (!mounted) return;
+    Navigator.pop(context);
+    if (ok) widget.onConfirmed();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Pago con ${widget.metodo.label}'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Realiza el pago de ${ClienteRepository.formatBalance(widget.monto)} '
+            'usando el siguiente medio:',
+          ),
+          const SizedBox(height: 12),
+          Text(
+            widget.metodo.instrucciones,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Cuando completes el pago, confirma para aplicarlo a tu credito. '
+            'En produccion esto se confirmaria automaticamente via webhook.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isConfirming ? null : () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _isConfirming ? null : _confirmar,
+          child: _isConfirming
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Ya pague — confirmar'),
+        ),
+      ],
+    );
+  }
 }

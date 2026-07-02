@@ -34,7 +34,6 @@ class CreditsViewModel extends ChangeNotifier {
 
   List<CreditoTabEntry> _entries = [];
   bool _isLoading = true;
-  bool _isPaying = false;
   String? _error;
   RealtimeChannel? _creditosChannel;
   RealtimeChannel? _solicitudesChannel;
@@ -45,7 +44,6 @@ class CreditsViewModel extends ChangeNotifier {
       .map((e) => e.credito!)
       .toList();
   bool get isLoading => _isLoading;
-  bool get isPaying => _isPaying;
   String? get error => _error;
   bool get isEmpty => _entries.isEmpty;
 
@@ -70,17 +68,7 @@ class CreditsViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final results = await Future.wait([
-        _clienteRepository.fetchCreditos(),
-        _solicitudRepository.fetchSolicitudesAprobadas(),
-      ]);
-      final creditos = results[0] as List<CreditoModel>;
-      final solicitudes = results[1] as List<SolicitudModel>;
-
-      _entries = [
-        for (final s in solicitudes) CreditoTabEntry.solicitud(s),
-        for (final c in creditos) CreditoTabEntry.credito(c),
-      ];
+      await _reloadEntries();
     } catch (error) {
       _error = error.toString();
     } finally {
@@ -89,14 +77,37 @@ class CreditsViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> refreshCreditos() async {
+    try {
+      await _reloadEntries();
+      _error = null;
+      notifyListeners();
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> _reloadEntries() async {
+    final results = await Future.wait([
+      _clienteRepository.fetchCreditos(),
+      _solicitudRepository.fetchSolicitudesAprobadas(),
+    ]);
+    final creditos = results[0] as List<CreditoModel>;
+    final solicitudes = results[1] as List<SolicitudModel>;
+
+    _entries = [
+      for (final s in solicitudes) CreditoTabEntry.solicitud(s),
+      for (final c in creditos) CreditoTabEntry.credito(c),
+    ];
+  }
+
   Future<String?> pagarCuota({
     required String creditoId,
     required double monto,
     required String metodoPago,
   }) async {
-    _isPaying = true;
     _error = null;
-    notifyListeners();
 
     try {
       final pagoId = await _clienteRepository.registrarPagoCredito(
@@ -104,32 +115,22 @@ class CreditsViewModel extends ChangeNotifier {
         monto: monto,
         metodoPago: metodoPago,
       );
-      await loadCreditos();
       return pagoId;
     } catch (error) {
       _error = error.toString();
       return null;
-    } finally {
-      _isPaying = false;
-      notifyListeners();
     }
   }
 
   Future<bool> confirmarPagoPendiente(String pagoId) async {
-    _isPaying = true;
     _error = null;
-    notifyListeners();
 
     try {
       await _clienteRepository.confirmarPagoCredito(pagoId);
-      await loadCreditos();
       return true;
     } catch (error) {
       _error = error.toString();
       return false;
-    } finally {
-      _isPaying = false;
-      notifyListeners();
     }
   }
 
@@ -137,23 +138,17 @@ class CreditsViewModel extends ChangeNotifier {
     required String creditoId,
     required double monto,
   }) async {
-    _isPaying = true;
     _error = null;
-    notifyListeners();
 
     try {
       await _clienteRepository.registrarPagoSimulado(
         creditoId: creditoId,
         monto: monto,
       );
-      await loadCreditos();
       return true;
     } catch (error) {
       _error = error.toString();
       return false;
-    } finally {
-      _isPaying = false;
-      notifyListeners();
     }
   }
 

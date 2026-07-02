@@ -44,6 +44,7 @@ class _CreditsTabState extends State<CreditsTab> {
       MaterialPageRoute(
         builder: (_) => CreditDetailScreen(
           creditoId: entry.credito!.id,
+          creditsViewModel: widget.viewModel,
           onPaymentComplete: widget.onDataChanged,
         ),
       ),
